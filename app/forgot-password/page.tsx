@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       // später für Produktion anpassen:
       // hierhin leitet Supabase nach Klick auf den Link weiter
-      redirectTo: 'https://nextjs-hiwise.vercel.app/reset-password',
+      redirectTo: 'http://localhost:3000/reset-password',
     });
 
     setSending(false);
