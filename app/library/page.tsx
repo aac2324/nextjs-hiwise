@@ -1,29 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Menu from '../components/Menu';
 import { QuoteCard } from '../components/QuoteCard';
 import { Quote } from '../../types/quote';
 import { supabase } from '../utils/supabaseClient';
 
 export default function LibraryPage() {
+  const router = useRouter();
+
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Quotes laden
   useEffect(() => {
-    async function loadQuotes() {
-      const { data, error } = await supabase
+    async function loadData() {
+      // 1. Quotes laden
+      const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error loading quotes:', error);
+      if (quotesError) {
+        console.error('Error loading quotes:', quotesError);
       } else {
-        // Map DB-Result in unser Quote-Interface
-        const mapped = (data || []).map((row: any) => ({
+        const mapped = (quotesData || []).map((row: any) => ({
           id: row.id,
           text: row.text,
           author: row.author,
@@ -34,18 +37,67 @@ export default function LibraryPage() {
         setQuotes(mapped);
       }
 
+      // 2. User-Session holen
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+
+      if (session?.user) {
+        const uid = session.user.id;
+        setUserId(uid);
+
+        // 3. Favoriten für diesen User laden
+        const { data: favs, error: favError } = await supabase
+          .from('favorites')
+          .select('quote_id')
+          .eq('user_id', uid);
+
+        if (favError) {
+          console.error('Error loading favorites:', favError);
+        } else if (favs) {
+          setFavoriteIds(favs.map(f => f.quote_id));
+        }
+      }
+
       setLoading(false);
     }
 
-    loadQuotes();
+    loadData();
   }, []);
 
-  const handleToggleFavorite = (quoteId: string) => {
-    setFavorites(prev =>
-      prev.includes(quoteId)
-        ? prev.filter(id => id !== quoteId)
-        : [...prev, quoteId]
-    );
+  const handleToggleFavorite = async (quoteId: string) => {
+    // Nicht eingeloggt → auf Login-Seite schicken
+    if (!userId) {
+      router.push('/login');
+      return;
+    }
+
+    // Ist schon Favorit → löschen
+    if (favoriteIds.includes(quoteId)) {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', userId)
+        .eq('quote_id', quoteId);
+
+      if (error) {
+        console.error('Error removing favorite:', error);
+        return;
+      }
+
+      setFavoriteIds(prev => prev.filter(id => id !== quoteId));
+    } else {
+      // Noch kein Favorit → hinzufügen
+      const { error } = await supabase
+        .from('favorites')
+        .insert({ user_id: userId, quote_id: quoteId });
+
+      if (error) {
+        console.error('Error adding favorite:', error);
+        return;
+      }
+
+      setFavoriteIds(prev => [...prev, quoteId]);
+    }
   };
 
   if (loading) {
@@ -78,7 +130,7 @@ export default function LibraryPage() {
               <QuoteCard
                 key={quote.id}
                 quote={quote}
-                isFavorited={favorites.includes(quote.id)}
+                isFavorited={favoriteIds.includes(quote.id)}
                 onToggleFavorite={handleToggleFavorite}
               />
             ))}
@@ -88,3 +140,4 @@ export default function LibraryPage() {
     </div>
   );
 }
+

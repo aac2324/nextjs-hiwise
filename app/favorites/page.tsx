@@ -1,76 +1,141 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Menu from '../components/Menu';
 import { QuoteCard } from '../components/QuoteCard';
 import { Quote } from '../../types/quote';
-
-// Sample quotes (same as library - later this will be shared state or from database)
-const allQuotes: Quote[] = [
-  {
-    id: '1',
-    text: 'Wir verlangen, das Leben müsse einen Sinn haben, aber es hat nur ganz genau soviel Sinn, als wir selber ihm zu geben imstande sind.',
-    author: 'Hermann Hesse, Siddharta',
-    createdAt: '2024-01-01',
-  },
-  {
-    id: '2',
-    text: 'Der Weg ist das Ziel.',
-    author: 'Konfuzius',
-    createdAt: '2024-01-02',
-  },
-  {
-    id: '3',
-    text: 'Wer kämpft, kann verlieren. Wer nicht kämpft, hat schon verloren.',
-    author: 'Bertolt Brecht',
-    createdAt: '2024-01-03',
-  },
-];
+import { supabase } from '../utils/supabaseClient';
 
 export default function FavoritesPage() {
-  // For now, start with one favorite to show how it looks
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(['1']);
+  const router = useRouter();
 
-  const handleToggleFavorite = (quoteId: string) => {
-    setFavoriteIds(prev => 
-      prev.includes(quoteId) 
-        ? prev.filter(id => id !== quoteId)
-        : [...prev, quoteId]
-    );
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadFavorites() {
+      // 1. Session prüfen
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+
+      if (!session?.user) {
+        router.replace('/login');
+        return;
+      }
+
+      const uid = session.user.id;
+      setUserId(uid);
+
+      // 2. Favoriten-Quote-IDs für diesen User holen
+      const { data: favs, error: favError } = await supabase
+        .from('favorites')
+        .select('quote_id')
+        .eq('user_id', uid);
+
+      if (favError) {
+        console.error('Error loading favorites:', favError);
+        setLoading(false);
+        return;
+      }
+
+      const quoteIds = (favs || []).map(f => f.quote_id);
+
+      if (quoteIds.length === 0) {
+        setQuotes([]);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Die passenden Quotes laden
+      const { data: quotesData, error: quotesError } = await supabase
+        .from('quotes')
+        .select('*')
+        .in('id', quoteIds);
+
+      if (quotesError) {
+        console.error('Error loading quotes for favorites:', quotesError);
+        setLoading(false);
+        return;
+      }
+
+      const mapped = (quotesData || []).map((row: any) => ({
+        id: row.id,
+        text: row.text,
+        author: row.author,
+        imageUrl: row.image_url ?? undefined,
+        createdAt: row.created_at,
+      })) as Quote[];
+
+      // Optional: Nach Datum sortieren (neueste zuerst)
+      mapped.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      setQuotes(mapped);
+      setLoading(false);
+    }
+
+    loadFavorites();
+  }, [router]);
+
+  const handleToggleFavorite = async (quoteId: string) => {
+    if (!userId) return;
+
+    const { error } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('user_id', userId)
+      .eq('quote_id', quoteId);
+
+    if (error) {
+      console.error('Error removing favorite:', error);
+      return;
+    }
+
+    // Aus der Liste entfernen
+    setQuotes(prev => prev.filter(q => q.id !== quoteId));
   };
 
-  const favoriteQuotes = allQuotes.filter(q => favoriteIds.includes(q.id));
-  
-  const sortedQuotes = [...favoriteQuotes].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  if (loading) {
+    return (
+      <div className="bg-white min-h-screen flex flex-col">
+        <Menu />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-[16px] text-gray-600">Lade Favoriten…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white min-h-screen flex flex-col">
       <Menu />
-      
+
       <div className="flex flex-col gap-[24px] items-center px-[16px] py-[20px] pb-[32px]">
         <h1 className="font-bold text-[24px] text-black">
           Favoriten
         </h1>
-        
-        {sortedQuotes.length === 0 ? (
-          <div className="flex flex-col gap-[8px] items-center text-center py-[40px]">
+
+        {quotes.length === 0 ? (
+          <div className="flex flex-col gap-[8px] items-center text-center py-[40px] max-w-[400px]">
             <p className="text-[18px] text-black">
               Noch keine Favoriten gespeichert
             </p>
             <p className="text-[14px] text-gray-600">
-              Tippe auf das Herz, um Sprüche zu deinen Favoriten hinzuzufügen
+              Tippe auf das Herz in der Spruchliste, um Favoriten hinzuzufügen.
             </p>
           </div>
         ) : (
           <div className="flex flex-col gap-[24px] w-full max-w-[400px]">
-            {sortedQuotes.map((quote) => (
-              <QuoteCard 
+            {quotes.map((quote) => (
+              <QuoteCard
                 key={quote.id}
-                quote={quote} 
+                quote={quote}
                 isFavorited={true}
-                onToggleFavorite={handleToggleFavorite} 
+                onToggleFavorite={handleToggleFavorite}
               />
             ))}
           </div>
