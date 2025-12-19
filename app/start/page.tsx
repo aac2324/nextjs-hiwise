@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import Menu from '../components/Menu';
 
 function QuoteSection() {
@@ -18,19 +19,20 @@ function QuoteSection() {
 function Buttons() {
   return (
     <div className="flex flex-col gap-[12px] w-full">
-      <button className="bg-black text-white py-[10px] px-[16px] rounded-[4px] text-[16px] font-medium">
+      <a href="/library" className="bg-black text-white py-[10px] px-[16px] rounded-[4px] text-[16px] font-medium text-center cursor-pointer no-underline">
         Alle Sprüche
-      </button>
-      <button className="bg-white text-black py-[10px] px-[16px] rounded-[4px] text-[16px] font-medium border border-black">
+      </a>
+      <a href="/favorites" className="bg-white text-black py-[10px] px-[16px] rounded-[4px] text-[16px] font-medium border border-black text-center cursor-pointer no-underline">
         Favoriten
-      </button>
+      </a>
     </div>
   );
 }
 
+
 function ImageCard() {
   return (
-    <div className="h-[200px] w-full rounded-[8px] shadow-lg overflow-hidden">
+    <div className="flex-1 w-full rounded-[8px] shadow-lg overflow-hidden min-h-[200px]">
       <img 
         alt="Decorative" 
         className="w-full h-full object-cover"
@@ -44,7 +46,7 @@ export default function StartPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col">
       <Menu />
-      <div className="flex flex-col gap-[24px] items-center px-[16px] py-[20px] pb-[32px]">
+      <div className="flex-1 flex flex-col gap-[24px] items-center px-[16px] py-[20px] pb-[32px]">
         <QuoteSection />
         <Buttons />
         <ImageCard />

@@ -34,8 +34,13 @@ export default function Menu() {
       {/* Header */}
       <div className="bg-white w-full border-b border-black">
         <div className="flex items-center justify-between px-[16px] py-[24px]">
-          <Link href="/start" className="font-bold text-[18px] text-black">
-            HiWise
+          <Link href="/start">
+            {/* SVG logo instead of text */}
+            <img
+              src="/assets/hiwise-logo-nn.svg"
+              alt="HiWise"
+              className="h-[24px]"
+            />
           </Link>
           {isOpen ? (
             <CloseIcon onClick={() => setIsOpen(false)} />
