@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Menu from '../components/Menu';
 import { QuoteCard } from '../components/QuoteCard';
 import { Quote } from '../../types/quote';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from '../utils/supabase/client';
 
 export default function FavoritesPage() {
   const router = useRouter();
