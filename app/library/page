@@ -1,6 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+// === DEBUG START ===
+console.log('=== DEBUG INFO ===');
+console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'UNDEFINED');
+console.log('SUPABASE_KEY exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+// === DEBUG END ===
+
 import { useRouter } from 'next/navigation';
 import Menu from '../components/Menu';
 import { QuoteCard } from '../components/QuoteCard';
