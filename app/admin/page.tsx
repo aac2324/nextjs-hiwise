@@ -105,7 +105,7 @@ export default function AdminPage() {
       <div className="flex flex-col gap-[16px] items-center px-[16px] py-[20px] pb-[32px]">
         <div className="w-full max-w-[400px] flex justify-between items-center">
           <h1 className="font-bold text-[24px] text-black">
-            Admin: Neuer Spruch
+            Füge einen neuen Spruch hinzu
           </h1>
           <button
             onClick={handleLogout}
